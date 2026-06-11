@@ -1,9 +1,3 @@
-// ============================================================
-// app/stock/[ticker]/page.tsx
-// ============================================================
-// Stock detail page — candlestick chart + predictions + LLM chat
-// ============================================================
-
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -18,7 +12,6 @@ import {
   ChartCandle
 } from '@/lib/api'
 
-// ── Signal badge ───────────────────────────────────────────
 function SignalBadge({ signal, large }: { signal: string; large?: boolean }) {
   const colors: Record<string, string> = {
     Buy : 'bg-green-500/20 text-green-400 border border-green-500/30',
@@ -32,12 +25,7 @@ function SignalBadge({ signal, large }: { signal: string; large?: boolean }) {
   )
 }
 
-// ── Probability bar ────────────────────────────────────────
-function ProbBar({ label, value, color }: {
-  label: string
-  value: number
-  color: string
-}) {
+function ProbBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="mb-2">
       <div className="flex justify-between text-xs mb-1">
@@ -45,16 +33,12 @@ function ProbBar({ label, value, color }: {
         <span className="text-white font-mono">{(value * 100).toFixed(1)}%</span>
       </div>
       <div className="bg-gray-800 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full ${color} transition-all duration-500`}
-          style={{ width: `${value * 100}%` }}
-        />
+        <div className={`h-2 rounded-full ${color} transition-all duration-500`} style={{ width: `${value * 100}%` }} />
       </div>
     </div>
   )
 }
 
-// ── Candlestick chart ──────────────────────────────────────
 function PriceChart({ data }: { data: ChartCandle[] }) {
   const chartRef = useRef<HTMLDivElement>(null)
   const rsiRef   = useRef<HTMLDivElement>(null)
@@ -63,25 +47,20 @@ function PriceChart({ data }: { data: ChartCandle[] }) {
   useEffect(() => {
     if (!chartRef.current || !data.length) return
 
-    // ── Main candlestick chart ─────────────────────────
-    const chart = createChart(chartRef.current, {
+    const chartOptions = {
       width          : chartRef.current.clientWidth,
       height         : 300,
-      layout         : {
-        background   : { type: 'solid', color: 'transparent' },
-        textColor    : '#9ca3af',
-      },
+      layout         : { textColor: '#9ca3af' },
       grid           : {
         vertLines    : { color: '#1f2937' },
         horzLines    : { color: '#1f2937' },
       },
       crosshair      : { mode: 1 },
       rightPriceScale: { borderColor: '#374151' },
-      timeScale      : {
-        borderColor  : '#374151',
-        timeVisible  : true,
-      },
-    })
+      timeScale      : { borderColor: '#374151', timeVisible: true },
+    }
+
+    const chart = createChart(chartRef.current, chartOptions as any)
 
     const candleSeries = chart.addCandlestickSeries({
       upColor        : '#22c55e',
@@ -100,9 +79,8 @@ function PriceChart({ data }: { data: ChartCandle[] }) {
       close: d.close,
     })))
 
-    // Volume series
     const volumeSeries = chart.addHistogramSeries({
-      priceFormat : { type: 'volume' },
+      priceFormat : { type: 'volume' as const },
       priceScaleId: 'volume',
     })
     chart.priceScale('volume').applyOptions({
@@ -111,106 +89,51 @@ function PriceChart({ data }: { data: ChartCandle[] }) {
     volumeSeries.setData(data.map(d => ({
       time : d.date,
       value: d.volume,
-      color: d.close >= d.open
-        ? 'rgba(34,197,94,0.3)'
-        : 'rgba(239,68,68,0.3)',
+      color: d.close >= d.open ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)',
     })))
 
     chart.timeScale().fitContent()
 
-    // ── RSI chart ──────────────────────────────────────
-    let rsiChart: ReturnType<typeof createChart> | null = null
+    const rsiOptions = {
+      width          : rsiRef.current?.clientWidth || 600,
+      height         : 100,
+      layout         : { textColor: '#9ca3af' },
+      grid           : {
+        vertLines    : { color: '#1f2937' },
+        horzLines    : { color: '#1f2937' },
+      },
+      rightPriceScale: { borderColor: '#374151' },
+      timeScale      : { borderColor: '#374151', timeVisible: true },
+    }
+
+    let rsiChart: any = null
     if (rsiRef.current) {
-      rsiChart = createChart(rsiRef.current, {
-        width          : rsiRef.current.clientWidth,
-        height         : 100,
-        layout         : {
-          background   : { type: 'solid', color: 'transparent' },
-          textColor    : '#9ca3af',
-        },
-        grid           : {
-          vertLines    : { color: '#1f2937' },
-          horzLines    : { color: '#1f2937' },
-        },
-        rightPriceScale: { borderColor: '#374151' },
-        timeScale      : {
-          borderColor  : '#374151',
-          timeVisible  : true,
-        },
-      })
-
-      const rsiSeries = rsiChart.addLineSeries({
-        color    : '#3b82f6',
-        lineWidth: 2,
-      })
-      rsiSeries.setData(data.map(d => ({
-        time : d.date,
-        value: d.rsi,
-      })))
-
-      const ob = rsiChart.addLineSeries({
-        color    : '#ef4444',
-        lineWidth: 1,
-        lineStyle: 2,
-      })
+      rsiChart = createChart(rsiRef.current, rsiOptions as any)
+      const rsiSeries = rsiChart.addLineSeries({ color: '#3b82f6', lineWidth: 2 })
+      rsiSeries.setData(data.map(d => ({ time: d.date, value: d.rsi })))
+      const ob = rsiChart.addLineSeries({ color: '#ef4444', lineWidth: 1, lineStyle: 2 })
       ob.setData(data.map(d => ({ time: d.date, value: 70 })))
-
-      const os = rsiChart.addLineSeries({
-        color    : '#22c55e',
-        lineWidth: 1,
-        lineStyle: 2,
-      })
+      const os = rsiChart.addLineSeries({ color: '#22c55e', lineWidth: 1, lineStyle: 2 })
       os.setData(data.map(d => ({ time: d.date, value: 30 })))
-
       rsiChart.timeScale().fitContent()
     }
 
-    // ── MACD chart ─────────────────────────────────────
-    let macdChart: ReturnType<typeof createChart> | null = null
+    let macdChart: any = null
     if (macdRef.current) {
-      macdChart = createChart(macdRef.current, {
-        width          : macdRef.current.clientWidth,
-        height         : 100,
-        layout         : {
-          background   : { type: 'solid', color: 'transparent' },
-          textColor    : '#9ca3af',
-        },
-        grid           : {
-          vertLines    : { color: '#1f2937' },
-          horzLines    : { color: '#1f2937' },
-        },
-        rightPriceScale: { borderColor: '#374151' },
-        timeScale      : {
-          borderColor  : '#374151',
-          timeVisible  : true,
-        },
-      })
-
-      const macdSeries = macdChart.addHistogramSeries({
-        color: '#3b82f6',
-      })
+      macdChart = createChart(macdRef.current, { ...rsiOptions, width: macdRef.current.clientWidth } as any)
+      const macdSeries = macdChart.addHistogramSeries({ color: '#3b82f6' })
       macdSeries.setData(data.map(d => ({
         time : d.date,
         value: d.macd,
-        color: d.macd >= 0
-          ? 'rgba(34,197,94,0.7)'
-          : 'rgba(239,68,68,0.7)',
+        color: d.macd >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)',
       })))
-
       macdChart.timeScale().fitContent()
     }
 
-    // Resize handler
     const handleResize = () => {
-      if (chartRef.current) {
-        chart.applyOptions({ width: chartRef.current.clientWidth })
-      }
-      if (rsiRef.current && rsiChart) {
-        rsiChart.applyOptions({ width: rsiRef.current.clientWidth })
-      }
-      if (macdRef.current && macdChart) {
-        macdChart.applyOptions({ width: macdRef.current.clientWidth })
-      }
+      if (chartRef.current)  chart.applyOptions({ width: chartRef.current.clientWidth })
+      if (rsiRef.current && rsiChart)   rsiChart.applyOptions({ width: rsiRef.current.clientWidth })
+      if (macdRef.current && macdChart) macdChart.applyOptions({ width: macdRef.current.clientWidth })
     }
     window.addEventListener('resize', handleResize)
 
@@ -224,29 +147,20 @@ function PriceChart({ data }: { data: ChartCandle[] }) {
 
   return (
     <div>
-      <div className="mb-2">
-        <span className="text-xs text-gray-500">
-          Candlestick + Volume (6 months)
-        </span>
-      </div>
+      <div className="mb-2"><span className="text-xs text-gray-500">Candlestick + Volume (6 months)</span></div>
       <div ref={chartRef} className="w-full" />
-
       <div className="mt-4 mb-1 flex items-center gap-2">
         <span className="text-xs text-gray-500">RSI (14)</span>
         <span className="text-xs text-red-400">— 70 overbought</span>
         <span className="text-xs text-green-400">— 30 oversold</span>
       </div>
       <div ref={rsiRef} className="w-full" />
-
-      <div className="mt-4 mb-1">
-        <span className="text-xs text-gray-500">MACD Histogram</span>
-      </div>
+      <div className="mt-4 mb-1"><span className="text-xs text-gray-500">MACD Histogram</span></div>
       <div ref={macdRef} className="w-full" />
     </div>
   )
 }
 
-// ── Chat message ───────────────────────────────────────────
 interface Message {
   role   : 'user' | 'assistant'
   content: string
@@ -261,9 +175,7 @@ function ChatMessage({ message }: { message: Message }) {
         </div>
       )}
       <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl text-sm leading-relaxed ${
-        message.role === 'user'
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-800 text-gray-200 border border-gray-700'
+        message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-200 border border-gray-700'
       }`}>
         {message.content}
       </div>
@@ -271,7 +183,6 @@ function ChatMessage({ message }: { message: Message }) {
   )
 }
 
-// ── Main page ──────────────────────────────────────────────
 export default function StockPage() {
   const params  = useParams()
   const ticker  = (params.ticker as string).toUpperCase()
@@ -292,27 +203,22 @@ export default function StockPage() {
       setChartData(chart)
       setMessages([{
         role   : 'assistant',
-        content: `Hi! I'm analyzing ${ticker} for you. Ask me anything about this prediction.`
+        content: `Hi! I am analyzing ${ticker} for you. Ask me anything about this prediction.`
       }])
     }).finally(() => setLoading(false))
   }, [ticker])
 
   const sendMessage = async () => {
     if (!input.trim() || !prediction) return
-
     const userMsg = input.trim()
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: userMsg }])
     setChatLoading(true)
-
     try {
       const explanation = await getExplanation(ticker, userMsg)
       setMessages(prev => [...prev, { role: 'assistant', content: explanation }])
     } catch {
-      setMessages(prev => [...prev, {
-        role   : 'assistant',
-        content: 'Sorry, I could not get an explanation right now.'
-      }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I could not get an explanation right now.' }])
     } finally {
       setChatLoading(false)
     }
@@ -328,58 +234,40 @@ export default function StockPage() {
   }
 
   if (!prediction) {
-    return (
-      <div className="text-center py-20 text-red-400">
-        Failed to load prediction for {ticker}
-      </div>
-    )
+    return <div className="text-center py-20 text-red-400">Failed to load prediction for {ticker}</div>
   }
 
   return (
     <div>
 
-      {/* ── Back button ───────────────────────────────────── */}
-      <Link
-        href="/signals"
-        className="text-gray-400 hover:text-white text-sm mb-6 inline-flex items-center gap-1 transition-colors"
-      >
-        ← Back to Signals
+      <Link href="/signals" className="text-gray-400 hover:text-white text-sm mb-6 inline-flex items-center gap-1 transition-colors">
+        Back to Signals
       </Link>
 
-      {/* ── Header ────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-8 mt-4">
         <div>
           <h1 className="text-4xl font-bold text-white mb-1">{ticker}</h1>
           <p className="text-gray-400">{prediction.date}</p>
         </div>
         <div className="text-right">
-          <div className="text-3xl font-bold text-white mb-2">
-            ${prediction.price.toFixed(2)}
-          </div>
+          <div className="text-3xl font-bold text-white mb-2">${prediction.price.toFixed(2)}</div>
           <SignalBadge signal={prediction.signal} large />
         </div>
       </div>
 
-      {/* ── Main grid ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* ── Left: chart + models ──────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Chart */}
           <div className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
             <h2 className="text-lg font-bold text-white mb-4">Price Chart</h2>
             <PriceChart data={chartData} />
           </div>
 
-          {/* Model predictions */}
           <div className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">
-              Model Predictions
-            </h2>
+            <h2 className="text-lg font-bold text-white mb-4">Model Predictions</h2>
             <div className="grid grid-cols-2 gap-4">
 
-              {/* Ensemble */}
               <div className="col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-bold text-white">Ensemble (Final)</span>
@@ -390,7 +278,6 @@ export default function StockPage() {
                 <ProbBar label="Buy"  value={prediction.ensemble.buy}  color="bg-green-500" />
               </div>
 
-              {/* XGBoost */}
               <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold text-white text-sm">XGBoost</span>
@@ -401,7 +288,6 @@ export default function StockPage() {
                 <ProbBar label="Buy"  value={prediction.models.xgboost.buy}  color="bg-green-500" />
               </div>
 
-              {/* LightGBM */}
               <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold text-white text-sm">LightGBM</span>
@@ -412,7 +298,6 @@ export default function StockPage() {
                 <ProbBar label="Buy"  value={prediction.models.lightgbm.buy}  color="bg-green-500" />
               </div>
 
-              {/* LSTM */}
               <div className="col-span-2 bg-gray-800/80 border border-gray-700 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold text-white text-sm">LSTM</span>
@@ -426,11 +311,8 @@ export default function StockPage() {
             </div>
           </div>
 
-          {/* Technical indicators */}
           <div className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">
-              Technical Indicators
-            </h2>
+            <h2 className="text-lg font-bold text-white mb-4">Technical Indicators</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
                 { label: 'RSI (14)',   value: prediction.features.rsi_14.toFixed(1),                      color: prediction.features.rsi_14 > 70 ? 'text-red-400' : prediction.features.rsi_14 < 30 ? 'text-green-400' : 'text-white' },
@@ -452,19 +334,14 @@ export default function StockPage() {
 
         </div>
 
-        {/* ── Right: LLM chat ───────────────────────────────── */}
         <div className="lg:col-span-1">
           <div className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl h-full flex flex-col" style={{ minHeight: '600px' }}>
 
-            {/* Chat header */}
             <div className="p-4 border-b border-gray-800">
               <h2 className="font-bold text-white">Ask NeuroTrade AI</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                Ask anything about this prediction
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Ask anything about this prediction</p>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 p-4 overflow-y-auto">
               {messages.map((msg, i) => (
                 <ChatMessage key={i} message={msg} />
@@ -485,7 +362,6 @@ export default function StockPage() {
               )}
             </div>
 
-            {/* Input */}
             <div className="p-4 border-t border-gray-800">
               <div className="flex gap-2">
                 <input
@@ -504,9 +380,7 @@ export default function StockPage() {
                   Send
                 </button>
               </div>
-              <p className="text-xs text-gray-600 mt-2">
-                Powered by Groq LLM — not financial advice
-              </p>
+              <p className="text-xs text-gray-600 mt-2">Powered by Groq LLM — not financial advice</p>
             </div>
 
           </div>
