@@ -1,0 +1,26 @@
+# ── Data & ML ──────────────────────────────────────────────
+yfinance
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+xgboost
+lightgbm
+tensorflow
+joblib
+ta
+
+# ── Jupyter ────────────────────────────────────────────────
+jupyter
+
+# ── Backend ────────────────────────────────────────────────
+fastapi
+uvicorn
+groq
+python-dotenv
+httpx
+pydantic
+
+# ── Utils ──────────────────────────────────────────────────
+requests
